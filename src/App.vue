@@ -1,28 +1,24 @@
 <template>
   <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <photo-uploader />
   </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import UIkit from 'uikit';
+import Icons from 'uikit/dist/js/uikit-icons';
+import PhotoUploader from './components/PhotoUploader.vue'
+
+UIkit.use(Icons);
 
 export default {
   name: 'App',
   components: {
-    HelloWorld
+    PhotoUploader
   }
 }
 </script>
 
-<style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
+<style lang="less">
+@import "../node_modules/uikit/src/less/uikit.less";
 </style>

@@ -7,8 +7,13 @@
     "build": "vue-cli-service build"
   },
   "dependencies": {
+    "axios": "^0.19.2",
     "core-js": "^3.6.5",
-    "vue": "^2.6.11"
+    "less-loader": "^6.2.0",
+    "uikit": "^3.5.5",
+    "vue": "^2.6.11",
+    "vue-advanced-cropper": "^0.16.10",
+    "vuedraggable": "^2.24.0"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~4.4.0",
