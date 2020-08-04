@@ -1,4 +1,7 @@
-# vue-crop-resize
+# Vue Photo Uploader
+![Vue Photo Uploader](uploader.png)
+
+A simple demo to load images, resize (current width 800px), and upload. 
 
 ## Project setup
 ```
