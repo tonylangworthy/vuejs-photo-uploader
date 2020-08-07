@@ -39,12 +39,17 @@
                                 <th v-if="isSuccess">Delete</th>
                             </tr>
                         </thead>
-                        <draggable v-model="imageList" ghost-class="ghost" tag="tbody" handle=".handle">
-                            <tr v-for="(image, index) in imageList" :key="image.fileOrder" @click="showImagePreview(image)">
+                        <draggable 
+                          v-model="uploadList" 
+                          ghost-class="ghost" 
+                          tag="tbody" 
+                          handle=".handle"
+                          @change="onDraggableChange($event)">
+                            <tr v-for="(image, index) in uploadList" :key="index" @click="showImagePreview(image)">
                                 <td class="handle"><button class="uk-button uk-button-text"><span uk-icon="icon: table"></span></button></td>
-                                <td><img class="uk-preserve-width" :src="image.data" width="80" alt=""></td>
-                                <td class="uk-text-truncate">{{ image.name }}</td>
-                                <td class="uk-table-expand">{{ image.size }}</td>
+                                <td><img class="uk-preserve-width" :src="image.attributes.url" width="80" alt=""></td>
+                                <td class="uk-text-truncate">{{ image.data.name }}</td>
+                                <td class="uk-table-expand">{{ image.attributes.size }}</td>
                                 <td v-bind:class="{ 'uk-hidden': isSuccess }" class="small-delete-button">
                                     <button class="uk-button uk-button-default uk-border-rounded uk-width-1-1" @click="cancelImage(index)">
                                         <span uk-icon="icon: ban"></span>
@@ -137,12 +142,12 @@ export default {
 			this.image = null
 		},
         loadFiles(fieldName, files) {
-            console.log('Loading files...')
-            console.info(fieldName)
+            // console.log('Loading files...')
+            // console.info(fieldName)
             // Reference to the DOM input element
             this.counter = 1
-            console.log(files)
-            console.log('we have files!!')
+            // console.log(files)
+            // console.log('we have files!!')
 
             files.forEach(file => {
                 
@@ -150,17 +155,17 @@ export default {
                 const reader = new FileReader();
                 reader.readAsDataURL(file)
                 let imageData = ''
-                console.log('file loop')
+                // console.log('file loop')
                 // Define a callback function to run, when FileReader finishes its job
                 reader.onload = (e) => {
                     // Note: arrow function used here, so that "this.imageData" refers to the imageData of Vue component
                     // Read image as base64 and set to imageData
-                    console.log('reader.onload() fired')
+                    // console.log('reader.onload() fired')
                     const img = new Image()
                     img.src = e.target.result
                     
                     img.onload = () => {
-                        console.log('img.onload() fired')
+                        // console.log('img.onload() fired')
                         imageData = this.resizeImage(img, file)
                         this.imageList.push(imageData)
                         console.log("imageData", imageData)
@@ -178,6 +183,7 @@ export default {
             console.log(img.naturalWidth, img.naturalHeight)
             const width = 800
             const height = width * (img.naturalHeight / img.naturalWidth)
+            let imageData = null
 
             const cvs = document.createElement('canvas')
             cvs.width = width
@@ -187,21 +193,30 @@ export default {
             ctx.drawImage(img, 0, 0, width, height)
             
             ctx.canvas.toBlob((blob) => {
+                console.log(URL.createObjectURL(blob))
+                let objectUrl = URL.createObjectURL(blob)
+                // let objectUrl = ctx.canvas.toDataURL(img, file.type)
                 const fileObj = new File([blob], file.name, {
                     type: file.type,
-                    lastModified: Date.now()
+                    lastModified: Date.now(),
                 })
-                this.uploadList.push(fileObj)
+                let attributes = {
+                    url: objectUrl,
+                    size: file.size
+                }
+                this.uploadList.push({data: fileObj, attributes: attributes})
+                console.log({data: fileObj, attributes: attributes})
             }, file.type, 1)
-            
-            let imageData = {
-                order: this.counter++,
-                data: ctx.canvas.toDataURL(img, file.type),
-                name: file.name,
-                size: file.size,
-                isHovering: false,
-                isSelected: false
-            }
+            // imageData = {
+            //     // order: this.counter++,
+            //     // data: ctx.canvas.toDataURL(img, file.type),
+            //     data: objectUrl,
+            //     name: file.name,
+            //     size: file.size,
+            //     isHovering: false,
+            //     isSelected: false
+            // }
+            // console.log(imageData)
 
 
 
@@ -215,12 +230,13 @@ export default {
             this.currentStatus = STATUS_SAVING;
             const formData = new FormData()
             const BASE_URL = "http://localhost:8083"
-            this.uploadList.forEach((f) => {
+            this.uploadList.forEach((f, i) => {
                 formData.append('file', f, f.name)
+                console.log(i + ' - ' + f.name)
             })
 
             for (var value of formData.values()) {
-                console.log(value); 
+                // console.log(value); 
             }
 
             setTimeout(() => {
@@ -251,9 +267,16 @@ export default {
             // const imageListIndex = this.imageList.indexOf(img)
             // console.log("image Index: " + imageListIndex)
             this.imageList.splice(idx, 1)
+                // URL.revokeObjectURL(attributes.url) // this prevents the photos from displaying
         },
         handleMouseOver (event) {
             console.log(event.target)
+        },
+        onDraggableChange (e) {
+            console.log('dragged', e)
+            for(let i = 0; i < this.imageList.length; i++) {
+                console.log('index: ' + i + ' - name: ' + imageList[i].name)
+            }
         }
     },
      mounted() {
