@@ -5,7 +5,7 @@
     <div class="uk-grid-small uk-width-2-3@l uk-width-1-1@s" uk-grid>
         <div class="uk-margin-bottom">
             <div uk-form-custom>
-                <input type="file" accept="image/*" @change="loadFiles($event.target.name, $event.target.files)" multiple>
+                <input type="file" accept="image/*" @change="loadFiles($event.target.files)" multiple>
                 <button class="uk-button uk-button-default uk-border-rounded uk-width-1-1" :disabled="isSaving" type="button" tabindex="-1">
                     <span uk-icon="plus"></span> Add Files
                 </button>
@@ -23,7 +23,7 @@
     <div class="uk-flex uk-flex-left uk-height-viewport">
         <div class="uk-width-5-6@m border-top uk-padding-small">
             <div class="uk-grid-small" uk-grid>
-                <div v-if="imageList.length === 0" class="js-upload uk-placeholder uk-text-center">
+                <div v-if="uploadList.length === 0" class="js-upload uk-placeholder uk-text-center">
                     <span uk-icon="icon: cloud-upload"></span>
                     <span class="uk-text-middle"> Select photos to upload by using the <strong>Add Files</strong> button</span>
                 </div>
@@ -47,9 +47,9 @@
                           @change="onDraggableChange($event)">
                             <tr v-for="(image, index) in uploadList" :key="index" @click="showImagePreview(image)">
                                 <td class="handle"><button class="uk-button uk-button-text"><span uk-icon="icon: table"></span></button></td>
-                                <td><img class="uk-preserve-width" :src="image.attributes.url" width="80" alt=""></td>
-                                <td class="uk-text-truncate">{{ image.data.name }}</td>
-                                <td class="uk-table-expand">{{ image.attributes.size }}</td>
+                                <td><img class="uk-preserve-width" :src="image.url" width="80" alt=""></td>
+                                <td class="uk-text-truncate">{{ image.name }}</td>
+                                <td class="uk-table-expand">{{ image.size }}</td>
                                 <td v-bind:class="{ 'uk-hidden': isSuccess }" class="small-delete-button">
                                     <button class="uk-button uk-button-default uk-border-rounded uk-width-1-1" @click="cancelImage(index)">
                                         <span uk-icon="icon: ban"></span>
@@ -69,10 +69,12 @@
         <div class="uk-visible@m uk-width-1-4 border-top border-left">
             <div v-if="currentSelection">
                 <div class="uk-media-card-top uk-height-viewport">
-                    <img :src="currentSelection.data" alt="" />
+                    <img :src="currentSelection.url" alt="" />
                 <div class="uk-card-body uk-text-left">
                     <p><strong>Name</strong><br>{{ currentSelection.name }}</p>
-                    <p><strong>Size</strong><br>{{ currentSelection.size }} KB</p>
+                    <p><strong>Current Size</strong><br>{{ currentSelection.size }}</p>
+                    <p><strong>Original Size</strong><br>{{ currentSelection.originalSize }}</p>
+                    <p><strong>Last Modified</strong><br>{{ currentSelection.lastModified }}</p>
                 </div>
                 </div>
             </div>
@@ -100,7 +102,7 @@ export default {
   },
   data() {
     return {
-        imageList: [],
+        tempList: [],
         uploadList: [],
         uploadError: null,
         uploadPercentage: 0,
@@ -141,98 +143,100 @@ export default {
         reset() {
 			this.image = null
 		},
-        loadFiles(fieldName, files) {
-            // console.log('Loading files...')
-            // console.info(fieldName)
-            // Reference to the DOM input element
-            this.counter = 1
-            // console.log(files)
-            // console.log('we have files!!')
+        loadFiles(files) {
+            let images = []
 
-            files.forEach(file => {
-                
-                // create a new FileReader to read this image and convert to base64 format
-                const reader = new FileReader();
-                reader.readAsDataURL(file)
-                let imageData = ''
-                // console.log('file loop')
-                // Define a callback function to run, when FileReader finishes its job
-                reader.onload = (e) => {
-                    // Note: arrow function used here, so that "this.imageData" refers to the imageData of Vue component
-                    // Read image as base64 and set to imageData
-                    // console.log('reader.onload() fired')
-                    const img = new Image()
-                    img.src = e.target.result
-                    
-                    img.onload = () => {
-                        // console.log('img.onload() fired')
-                        imageData = this.resizeImage(img, file)
-                        this.imageList.push(imageData)
-                        console.log("imageData", imageData)
-                    }
-                    
-                };
-                
-            });
+            // Convert FileList to array
+            files.forEach(f => {
+                images.push(f)
+            })
+            
+            this.resizeImages(images)
         },
         showImagePreview(image) {
             this.currentSelection = image
         },
-        resizeImage (img, file) {
-            console.log('resizing image...')
-            console.log(img.naturalWidth, img.naturalHeight)
+        resizeImages (images) {
+            console.log('resizing images...')
+            // console.log(img.naturalWidth, img.naturalHeight)
             const width = 800
-            const height = width * (img.naturalHeight / img.naturalWidth)
-            let imageData = null
+            
 
-            const cvs = document.createElement('canvas')
-            cvs.width = width
-            cvs.height = height
-            
-            const ctx = cvs.getContext('2d')
-            ctx.drawImage(img, 0, 0, width, height)
-            
-            ctx.canvas.toBlob((blob) => {
-                console.log(URL.createObjectURL(blob))
-                let objectUrl = URL.createObjectURL(blob)
-                // let objectUrl = ctx.canvas.toDataURL(img, file.type)
-                const fileObj = new File([blob], file.name, {
-                    type: file.type,
-                    lastModified: Date.now(),
+            Promise.all(images.map(i => {
+                return new Promise((resolve, reject) => {
+
+                    let preview = new Image()
+                    preview.src = URL.createObjectURL(i)
+
+                    preview.onload = () => {
+                        const height = width * (preview.naturalHeight / preview.naturalWidth)
+                        console.log(height)
+                        const cvs = document.createElement('canvas')
+                        cvs.width = width
+                        cvs.height = height
+                        const ctx = cvs.getContext('2d')
+                        ctx.drawImage(preview, 0, 0, width, height)
+
+                        ctx.canvas.toBlob(function(blob) {
+                            console.log('inside toBlob')
+                            const resizedFile = new File([blob], preview.name, {
+                                type: preview.type,
+                                lastModified: Date.now(),
+                            })
+                            const imageData = {
+                                file: resizedFile,
+                                originalSize: i.size, 
+                                size: resizedFile.size, 
+                                name: i.name, 
+                                lastModified: resizedFile.lastModified}
+                            resolve(imageData)
+
+                        }, preview.type, 1)
+                        URL.revokeObjectURL(preview.src)
+                    }
                 })
-                let attributes = {
-                    url: objectUrl,
-                    size: file.size
-                }
-                this.uploadList.push({data: fileObj, attributes: attributes})
-                console.log({data: fileObj, attributes: attributes})
-            }, file.type, 1)
-            // imageData = {
-            //     // order: this.counter++,
-            //     // data: ctx.canvas.toDataURL(img, file.type),
-            //     data: objectUrl,
-            //     name: file.name,
-            //     size: file.size,
-            //     isHovering: false,
-            //     isSelected: false
-            // }
-            // console.log(imageData)
+            })).then((photos) => {
+                photos.forEach((photo) => {
+                    console.log('file: ', photo)
+                    let imageData = {
+                        data: photo.file,
+                        url: URL.createObjectURL(photo.file),
+                        name: photo.name,
+                        originalSize: this.getFileSize(photo.originalSize),
+                        size: this.getFileSize(photo.size),
+                        lastModified: this.getDateTimeFromMilliseconds(photo.lastModified)
+                    }
+                    this.uploadList.push(imageData)
+                    console.log('imageData', imageData)
+                })
+            })
 
-
-
-            return imageData
-
+            console.log('outside toBlob')
         },
-        fileReader () {
-
+        getFileSize (number) {
+            if(number < 1024) {
+                return number + 'bytes';
+            } else if(number >= 1024 && number < 1048576) {
+                return (number/1024).toFixed(1) + 'KB';
+            } else if(number >= 1048576) {
+                return (number/1048576).toFixed(1) + 'MB';
+            }
+        },
+        getDateTimeFromMilliseconds (ms) {
+            const dateNow = new Date(ms)
+            // const month = dateNow.getMonth()
+            // const day = dateNow.getDate()
+            // const year = dateNow.getFullYear()
+            return dateNow.toString()
         },
         uploadImages (e) {
+            console.log('uploading images')
             this.currentStatus = STATUS_SAVING;
             const formData = new FormData()
             const BASE_URL = "http://localhost:8083"
-            this.uploadList.forEach((f, i) => {
-                formData.append('file', f, f.name)
-                console.log(i + ' - ' + f.name)
+            this.uploadList.forEach((d, i) => {
+                formData.append('file', d.data, d.name)
+                console.log(i + ' - ' + d.name)
             })
 
             for (var value of formData.values()) {
@@ -250,7 +254,7 @@ export default {
                 }.bind(this)
                 })
                 .then(x => {
-                    this.uploadList = [].concat(x)
+                    // this.uploadList = [].concat(x)
                     this.currentStatus = STATUS_SUCCESS
                 })
                 .catch(err => {
@@ -263,19 +267,24 @@ export default {
 
         },
         cancelImage (idx) {
-            console.log(idx)
+            console.log('removed index ', idx)
             // const imageListIndex = this.imageList.indexOf(img)
             // console.log("image Index: " + imageListIndex)
-            this.imageList.splice(idx, 1)
-                // URL.revokeObjectURL(attributes.url) // this prevents the photos from displaying
+            const lastImage = this.uploadList.length - 1
+            console.log('lastImage', lastImage)
+            if(idx == lastImage) {
+                console.log('match!')
+                this.showImagePreview(null)
+            }
+            this.uploadList.splice(idx, 1)
         },
         handleMouseOver (event) {
             console.log(event.target)
         },
         onDraggableChange (e) {
             console.log('dragged', e)
-            for(let i = 0; i < this.imageList.length; i++) {
-                console.log('index: ' + i + ' - name: ' + imageList[i].name)
+            for(let i = 0; i < this.uploadList.length; i++) {
+                console.log('index: ' + i + ' - name: ' + this.uploadList[i].data.name)
             }
         }
     },
