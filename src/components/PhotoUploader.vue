@@ -264,7 +264,7 @@ export default {
             }, 1000)
         },
         deleteImage (idx) {
-
+            console.log(`Photo ${idx} has been set for deletion.`)
         },
         cancelImage (idx) {
             console.log('removed index ', idx)
